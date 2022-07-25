@@ -24,7 +24,7 @@ import socket
 import struct
 import pickle
 import time
-from custom_params import wf_decision_list, wf_setpoint_list
+from custom_params import wf_decision_list, wf_setpoint_list, shelf_number, shelf_number_nav
 
 
 class GreenhouseNav:
@@ -194,29 +194,31 @@ class GreenhouseNav:
 		self.vx = 0.0
 		self.wz = 0.0
 		self.cart_mode = 1
-
-		self.shelf_number = 13
-		self.shelf_number_nav = 2
-		self.nav_step2_done = True
-
 		self.ch7 = 1024
 		self.prev_ch7 = 1024
-		self.wz_adj = 0.0
-		self.nav_step = 1
-		self.right_wf_flag = wf_decision_list[self.shelf_number-1][self.shelf_number_nav-1]
-		self.lc_step = 1
-		self.lc_lock = False
+
+		# self.shelf_number = shelf_number #1
+		# self.shelf_number_nav = shelf_number_nav #1
+		# if shelf_number_nav == 1:
+		# 	self.nav_step2_done = False
+		# else:
+		# 	self.nav_step2_done = True
+		# self.nav_step = 1
+		# self.right_wf_flag = wf_decision_list[self.shelf_number-1][self.shelf_number_nav-1]
+		# self.lc_step = 1
+		# self.lc_lock = False
+	
 		self.scan_ready = False
 		self.atcart_ready = False
 		self.ahrs_ready = False
-		self.mission_done = False
+
 		
 
 		#######################
 		##### PID setting #####
 		#######################
 		## PID wall follow ##
-		self.pid_wf = PID(self.wf_p, self.wf_i, self.wf_d, setpoint=wf_setpoint_list[self.shelf_number-1][self.shelf_number_nav-1])
+		self.pid_wf = PID(self.wf_p, self.wf_i, self.wf_d, setpoint=wf_setpoint_list[shelf_number-1][shelf_number_nav-1])
 		self.pid_wf.tunings = (self.wf_p, self.wf_i, self.wf_d)
 		self.pid_wf.sample_time = 0.001
 		self.pid_wf.output_limits = (-100.0, 100.0)
@@ -246,6 +248,8 @@ class GreenhouseNav:
 		self.pid_ut.output_limits = (-100.0, 100.0)
 		self.pid_ut.auto_mode = False
 
+
+		self.restart_custom_params()
 
 		###################
 		##### Pub/Sub #####
@@ -480,19 +484,33 @@ class GreenhouseNav:
 	def sbus_rc_callback(self, msg):
 
 		self.prev_ch7 = self.ch7
+		self.ch7 = msg.data[6]
 
 		## reset mission_done to start again once mission_done already
-		if (self.ch7 < 1500) and self.mission_done:
-			self.mission_done = False
-			self.pid_wf.auto_mode = True
-			self.nav_step = 1
-			self.shelf_number = 1
-			self.shelf_number_nav = 1
-			self.pid_wf.setpoint = wf_setpoint_list[self.shelf_number-1][self.shelf_number_nav-1]
-			self.right_wf_flag = wf_decision_list[self.shelf_number-1][self.shelf_number_nav-1]
+		if (self.ch7 < 1500) and (self.prev_ch7 != self.ch7):
+			self.restart_custom_params()
 			print("Restart mission again")
 
-		self.ch7 = msg.data[6]
+		# print("ch7: {:d} prev_ch7: {:d}".format(self.ch7, self.prev_ch7))
+
+	def restart_custom_params(self):
+		self.mission_done = False
+		self.pid_wf.auto_mode = True
+		self.pid_ut.auto_mode = False
+		self.nav_step = 1
+		self.shelf_number = shelf_number
+		self.shelf_number_nav = shelf_number_nav
+		self.lc_step = 1
+		self.lc_lock = False
+		if shelf_number_nav == 1:
+			self.nav_step2_done = False
+		else:
+			self.nav_step2_done = True
+		self.pid_wf.setpoint = wf_setpoint_list[shelf_number-1][shelf_number_nav-1]
+		self.right_wf_flag = wf_decision_list[shelf_number-1][shelf_number_nav-1]
+		self.allow_uturn_stamp = time.time()
+		print("Restart custom params")
+
 
 	###################
 	### Math helper ###
@@ -599,11 +617,13 @@ class GreenhouseNav:
 		disable_nav_stamp = time.time()
 		output_pid_log = 0.0
 		hdg_diff = 0.0
-		allow_uturn_stamp = time.time()
+
 		while not (self.scan_ready and self.atcart_ready and self.ahrs_ready):
 
 			print("Wait for all ready | scan_ready: {} | atcart_ready: {} | ahrs_ready: {}".format(\
 				self.scan_ready, self.atcart_ready, self.ahrs_ready))
+
+			self.allow_uturn_stamp = time.time()
 
 			time.sleep(1)
 
@@ -618,7 +638,7 @@ class GreenhouseNav:
 				################################
 				if self.nav_step == 1:
 
-					self.allow_uturn_period = time.time() - allow_uturn_stamp
+					self.allow_uturn_period = time.time() - self.allow_uturn_stamp
 
 					##################################
 					## lane-change trigger checking ##
@@ -731,7 +751,7 @@ class GreenhouseNav:
 								self.shelf_number_nav = 2
 								self.pid_wf.setpoint = wf_setpoint_list[self.shelf_number-1][self.shelf_number_nav-1]
 								self.right_wf_flag = wf_decision_list[self.shelf_number-1][self.shelf_number_nav-1]
-								allow_uturn_stamp = time.time()
+								self.allow_uturn_stamp = time.time()
 								print("Finished lane-changing")
 								time.sleep(2)
 
@@ -784,7 +804,7 @@ class GreenhouseNav:
 					else:
 						self.mission_done = False
 						self.nav_step = 1
-						allow_uturn_stamp = time.time()
+						self.allow_uturn_stamp = time.time()
 						self.shelf_number += 1
 						self.shelf_number_nav = 1
 						print("Updated shelf_number")
@@ -820,11 +840,9 @@ class GreenhouseNav:
 					print("Wait for navigation enable switch (ch7)")
 					disable_nav_stamp = time.time()
 
-				allow_uturn_stamp = time.time()
 				output_pid_log = 0.0
 				hdg_diff = 0.0
-				self.nav_step = 1
-
+				self.allow_uturn_stamp = time.time()
 
 			rate.sleep()
 
