@@ -6,10 +6,6 @@ import time
 
 startTime = time.time()
 video = cv2.VideoCapture("/dev/video4")
-# video = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-# video = cv2.VideoCapture()
-# cameraNumber = 4
-# video.open(cameraNumber + cv2.CAP_DSHOW)
 
 frame_height = 2160	#2160	#1080
 frame_width = 3840	#3840	#1920
@@ -25,25 +21,6 @@ saturation = 50 #128
 brightness = 1 #70 #90
 zoom = 100
 wb = 5000
-
-# out = cv2.VideoWriter('out.mp4',cv2.VideoWriter_fourcc(*'mp4v'), 30, (frame_width,frame_height))
-
-print("==================== Before setting ==================")
-print("Get frame width ", video.get(3))
-print("Get frame height ", video.get(4))
-print("Get frame autofocus ", video.get(cv2.CAP_PROP_AUTOFOCUS))
-print("Get frame focus length ", video.get(cv2.CAP_PROP_FOCUS))
-print("Get FPS ", video.get(cv2.CAP_PROP_FPS))
-print("Get brightness ", video.get(cv2.CAP_PROP_BRIGHTNESS))
-print("Get exposure ", video.get(cv2.CAP_PROP_EXPOSURE))
-print("Get auto wb ", video.get(cv2.CAP_PROP_AUTO_WB))
-print("Get wb temp ", video.get(cv2.CAP_PROP_WB_TEMPERATURE))
-print("Get auto exposure ", video.get(cv2.CAP_PROP_AUTO_EXPOSURE))
-print("Get contrast", video.get(cv2.CAP_PROP_CONTRAST))
-print("Get saturation", video.get(cv2.CAP_PROP_SATURATION))
-print("Get fourcc", video.get(cv2.CAP_PROP_FOURCC))
-print("Get zoom", video.get(cv2.CAP_PROP_ZOOM))
-print("Get Prop settings", video.get(cv2.CAP_PROP_SETTINGS))
 
 
 video.set(3, frame_width)
@@ -109,77 +86,77 @@ while True:
 	# out.write(image)
 	k = cv2.waitKey(1)
 
-	if k == ord('a'):
-		focus = focus + 1
-		print("Increased Focus ", focus)
-		video.set(cv2.CAP_PROP_FOCUS, focus)
-		info()
-	elif k == ord('z'):
-		focus = focus - 1
-		print("Decreased Focus ", focus)
-		video.set(cv2.CAP_PROP_FOCUS, focus)
-		info()
-	elif k == ord('s'):
-		contrast += 1
-		print("Increased Contrast ", contrast)
-		video.set(cv2.CAP_PROP_CONTRAST, contrast)
-		info()
-	elif k == ord('x'):
-		contrast -= 1
-		print("Decreased Contrast ", contrast)
-		video.set(cv2.CAP_PROP_CONTRAST, contrast)
-		info()
-	elif k == ord('d'):
-		exposure += 1
-		print("Increased exposure ", exposure)
-		video.set(cv2.CAP_PROP_EXPOSURE, exposure)
-		info()
-	elif k == ord('c'):
-		exposure -= 1
-		print("Decreased exposure ", exposure)
-		video.set(cv2.CAP_PROP_EXPOSURE, exposure)
-		info()
-	elif k == ord('f'):
-		saturation += 1
-		print("Increased saturation ", saturation)
-		video.set(cv2.CAP_PROP_SATURATION, saturation)
-		info()
-	elif k == ord('v'):
-		saturation -= 1
-		print("Decreased saturation ", saturation)
-		video.set(cv2.CAP_PROP_SATURATION, saturation)
-		info()
-	elif k == ord('g'):
-		brightness += 1
-		print("Increased brightness ", brightness)
-		video.set(cv2.CAP_PROP_BRIGHTNESS, brightness)
-		info()
-	elif k == ord('b'):
-		brightness -= 1
-		print("Decreased brightness ", brightness)
-		video.set(cv2.CAP_PROP_BRIGHTNESS, brightness)
-		info()
-	elif k == ord('h'):
-		zoom += 1
-		print("Increased zoom ", zoom)
-		video.set(cv2.CAP_PROP_ZOOM, zoom)
-		info()
-	elif k == ord('n'):
-		zoom -= 1
-		print("Decreased zoom ", zoom)
-		video.set(cv2.CAP_PROP_ZOOM, zoom)
-		info()
-	elif k == ord('j'):
-		wb += 100
-		print("Increased WB ", wb)
-		video.set(cv2.CAP_PROP_WB_TEMPERATURE, wb)
-		info()
-	elif k == ord('m'):
-		wb -= 100
-		print("Decreased WB ", wb)
-		video.set(cv2.CAP_PROP_WB_TEMPERATURE, wb)
-		info()
-	elif k == ord('k'):
+	# if k == ord('a'):
+	# 	focus = focus + 1
+	# 	print("Increased Focus ", focus)
+	# 	video.set(cv2.CAP_PROP_FOCUS, focus)
+	# 	info()
+	# elif k == ord('z'):
+	# 	focus = focus - 1
+	# 	print("Decreased Focus ", focus)
+	# 	video.set(cv2.CAP_PROP_FOCUS, focus)
+	# 	info()
+	# elif k == ord('s'):
+	# 	contrast += 1
+	# 	print("Increased Contrast ", contrast)
+	# 	video.set(cv2.CAP_PROP_CONTRAST, contrast)
+	# 	info()
+	# elif k == ord('x'):
+	# 	contrast -= 1
+	# 	print("Decreased Contrast ", contrast)
+	# 	video.set(cv2.CAP_PROP_CONTRAST, contrast)
+	# 	info()
+	# elif k == ord('d'):
+	# 	exposure += 1
+	# 	print("Increased exposure ", exposure)
+	# 	video.set(cv2.CAP_PROP_EXPOSURE, exposure)
+	# 	info()
+	# elif k == ord('c'):
+	# 	exposure -= 1
+	# 	print("Decreased exposure ", exposure)
+	# 	video.set(cv2.CAP_PROP_EXPOSURE, exposure)
+	# 	info()
+	# elif k == ord('f'):
+	# 	saturation += 1
+	# 	print("Increased saturation ", saturation)
+	# 	video.set(cv2.CAP_PROP_SATURATION, saturation)
+	# 	info()
+	# elif k == ord('v'):
+	# 	saturation -= 1
+	# 	print("Decreased saturation ", saturation)
+	# 	video.set(cv2.CAP_PROP_SATURATION, saturation)
+	# 	info()
+	# elif k == ord('g'):
+	# 	brightness += 1
+	# 	print("Increased brightness ", brightness)
+	# 	video.set(cv2.CAP_PROP_BRIGHTNESS, brightness)
+	# 	info()
+	# elif k == ord('b'):
+	# 	brightness -= 1
+	# 	print("Decreased brightness ", brightness)
+	# 	video.set(cv2.CAP_PROP_BRIGHTNESS, brightness)
+	# 	info()
+	# elif k == ord('h'):
+	# 	zoom += 1
+	# 	print("Increased zoom ", zoom)
+	# 	video.set(cv2.CAP_PROP_ZOOM, zoom)
+	# 	info()
+	# elif k == ord('n'):
+	# 	zoom -= 1
+	# 	print("Decreased zoom ", zoom)
+	# 	video.set(cv2.CAP_PROP_ZOOM, zoom)
+	# 	info()
+	# elif k == ord('j'):
+	# 	wb += 100
+	# 	print("Increased WB ", wb)
+	# 	video.set(cv2.CAP_PROP_WB_TEMPERATURE, wb)
+	# 	info()
+	# elif k == ord('m'):
+	# 	wb -= 100
+	# 	print("Decreased WB ", wb)
+	# 	video.set(cv2.CAP_PROP_WB_TEMPERATURE, wb)
+	# 	info()
+	if k == ord('k'):
 		name = str(time.time()) + ".jpg"
 		cv2.imwrite(name, image, [cv2.IMWRITE_JPEG_QUALITY, 100])
 	elif k == 27:

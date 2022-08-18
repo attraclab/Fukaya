@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-#this bot is for HOUSE 1, 2nd OFF
-
 import rospy
 import rospkg
 import rosparam
@@ -13,7 +11,7 @@ import numpy as np
 from numpy import pi
 from sensor_msgs.msg import LaserScan
 from sensor_msgs.msg import Imu
-from std_msgs.msg import String, Int16MultiArray, Float32MultiArray, UInt8, Bool
+from std_msgs.msg import String, Int16MultiArray, Float32MultiArray, UInt8, Bool, Int8
 import geometry_msgs.msg
 from geometry_msgs.msg import Polygon, PolygonStamped, Point32, Twist
 import tf2_ros
@@ -24,8 +22,19 @@ import socket
 import struct
 import pickle
 import time
-from custom_params import wf_decision_list, wf_setpoint_list, shelf_number, shelf_number_nav
+from custom_params import wf_decision_list, wf_setpoint_list, shelf_number, shelf_number_nav, lc_dist_step1_list, lc_dist_step2_list
 
+PORT = 8888
+IP = "192.168.8.125"
+# IP = "127.0.0.1"
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+packets = {
+			"cart_mode": 0,
+			"ch7": 1024,
+			"shutter" : False, 
+			"shelf_no" : 0,
+			"shelf_no_nav": 0,
+			}
 
 class GreenhouseNav:
 
@@ -44,8 +53,6 @@ class GreenhouseNav:
 		rosparam.upload_params("/", yamlfile)
 
 		## get parameter from rosparam server that we just loaded above
-		self.vx_max = rosparam.get_param(sv_node+"/vx_max")
-		self.wz_max = rosparam.get_param(sv_node+"/wz_max")
 		self.vx_wall_follow = rosparam.get_param(sv_node+"/vx_wall_follow")
 		self.wz_wall_follow = rosparam.get_param(sv_node+"/wz_wall_follow")
 		self.vx_lane_change = rosparam.get_param(sv_node+"/vx_lane_change")
@@ -92,8 +99,6 @@ class GreenhouseNav:
 		self.ut_i = rosparam.get_param(sv_node+"/ut_i")
 		self.ut_d = rosparam.get_param(sv_node+"/ut_d")
 
-		rospy.loginfo("vx_max : {:}".format(self.vx_max))
-		rospy.loginfo("wz_max : {:}".format(self.wz_max))
 		rospy.loginfo("vx_wall_follow : {:}".format(self.vx_wall_follow))
 		rospy.loginfo("wz_wall_follow : {:}".format(self.wz_wall_follow))
 		rospy.loginfo("vx_lane_change : {:}".format(self.vx_lane_change))
@@ -197,22 +202,11 @@ class GreenhouseNav:
 		self.ch7 = 1024
 		self.prev_ch7 = 1024
 
-		# self.shelf_number = shelf_number #1
-		# self.shelf_number_nav = shelf_number_nav #1
-		# if shelf_number_nav == 1:
-		# 	self.nav_step2_done = False
-		# else:
-		# 	self.nav_step2_done = True
-		# self.nav_step = 1
-		# self.right_wf_flag = wf_decision_list[self.shelf_number-1][self.shelf_number_nav-1]
-		# self.lc_step = 1
-		# self.lc_lock = False
-	
 		self.scan_ready = False
 		self.atcart_ready = False
 		self.ahrs_ready = False
 
-		
+		self.camera_shutter = False
 
 		#######################
 		##### PID setting #####
@@ -230,16 +224,6 @@ class GreenhouseNav:
 		# self.pid_lc.sample_time = 0.001
 		# self.pid_lc.output_limits = (-100.0, 100.0)
 		# self.pid_lc.auto_mode = False
-
-		# ################
-		# ## PID Reheading ##
-		# ################
-		# self.pid_rh = PID(self.rh_p, self.rh_i, self.rh_d, setpoint=self.rh_setpoint)
-		# self.pid_rh.tunings = (self.rh_p, self.rh_i, self.rh_d)
-		# self.pid_rh.sample_time = 0.001
-		# self.rh_out_range = 100.0
-		# self.pid_rh.output_limits = (-self.rh_out_range, self.rh_out_range)
-		# self.pid_rh.auto_mode = False
 
 		## PID U-Turn ##
 		self.pid_ut = PID(self.ut_p, self.ut_i, self.ut_d, setpoint=180.0)
@@ -269,7 +253,10 @@ class GreenhouseNav:
 		### camera trigger topics ###
 		self.camera_shutter_pub = rospy.Publisher("/nav/camera_shutter", Bool, queue_size=1)
 		self.camera_shutter_msg = Bool()
-
+		self.shelf_no_pub = rospy.Publisher("/nav/shelf_number", Int8, queue_size=1)
+		self.shelf_no_msg = Int8()
+		self.shelf_no_nav_pub = rospy.Publisher("/nav/shelf_number_nav", Int8, queue_size=1)
+		self.shelf_no_nav_msg = Int8()
 
 		rospy.Subscriber("/scan", LaserScan, self.scan_callback)
 		rospy.Subscriber("/jmoab/sbus_rc_ch", Int16MultiArray, self.sbus_rc_callback)
@@ -287,8 +274,6 @@ class GreenhouseNav:
 	### callback functions ###
 	##########################
 	def param_callback(self, config):
-		self.vx_max = config["vx_max"]
-		self.wz_max = config["wz_max"]
 		self.vx_wall_follow = config["vx_wall_follow"]
 		self.wz_wall_follow = config["wz_wall_follow"]
 		self.vx_lane_change = config["vx_lane_change"]
@@ -511,6 +496,17 @@ class GreenhouseNav:
 		self.allow_uturn_stamp = time.time()
 		print("Restart custom params")
 
+	def camera_trigger_pub(self, flag):
+		self.camera_shutter_msg.data = flag
+		self.camera_shutter_pub.publish(self.camera_shutter_msg)
+
+
+	def cmd_vel_publisher(self, vx, wz):
+		cmd_vel_msg = Twist()
+		cmd_vel_msg.linear.x = vx
+		cmd_vel_msg.angular.z = wz
+		self.cmd_vel_pub.publish(cmd_vel_msg)
+
 
 	###################
 	### Math helper ###
@@ -617,6 +613,8 @@ class GreenhouseNav:
 		disable_nav_stamp = time.time()
 		output_pid_log = 0.0
 		hdg_diff = 0.0
+		last_front_stop_in_wf = time.time()
+		front_stop_detected_period = 0.0
 
 		while not (self.scan_ready and self.atcart_ready and self.ahrs_ready):
 
@@ -640,10 +638,13 @@ class GreenhouseNav:
 
 					self.allow_uturn_period = time.time() - self.allow_uturn_stamp
 
+
 					##################################
 					## lane-change trigger checking ##
 					##################################
-					if ((self.left_lct_min_dist >= self.left_lct_dist) or (self.right_lct_min_dist >= self.right_lct_dist)) and (not self.nav_step2_done):
+					lane_change_dist_criteria = (self.left_lct_min_dist >= self.left_lct_dist) or (self.right_lct_min_dist >= self.right_lct_dist)
+					#if ((self.right_lct_min_dist >= self.right_lct_dist)) and (not self.nav_step2_done) and (self.allow_uturn_period > 10.0) and (self.shelf_number_nav == 1):
+					if (lane_change_dist_criteria) and (not self.nav_step2_done) and (self.allow_uturn_period > 10.0) and (self.shelf_number_nav == 1):
 						self.vx = 0.0
 						self.wz = 0.0
 						self.nav_step = 2
@@ -652,13 +653,16 @@ class GreenhouseNav:
 						self.pid_wf.auto_mode = False
 						self.pid_ut.auto_mode = False
 						self.lc_step = 1
+						self.camera_trigger_pub(False)
+						self.camera_shutter = False
+						self.cmd_vel_publisher(0.0, 0.0)
 						print("Finished wall-following, lane-change trig")
 						time.sleep(2)
 
 					#################################
 					## front-stop trigger checking ##
 					#################################
-					elif (self.front_stop_min_dist < self.front_stop_dist) and (self.allow_uturn_period > 10.0):
+					elif (self.front_stop_min_dist < self.front_stop_dist) and (front_stop_detected_period > 3.0) and (self.allow_uturn_period > 20.0) and (self.shelf_number_nav == 2):
 						self.vx = 0.0
 						self.wz = 0.0
 						self.nav_step = 3
@@ -666,6 +670,9 @@ class GreenhouseNav:
 						output_pid_wf = 0.0
 						self.pid_wf.auto_mode = False
 						self.pid_ut.auto_mode = True
+						self.camera_trigger_pub(False)
+						self.camera_shutter = False
+						self.cmd_vel_publisher(0.0, 0.0)
 						print("Finished wall-following, front-stop trig")
 						time.sleep(2)
 					
@@ -676,10 +683,10 @@ class GreenhouseNav:
 						### right wall-follow ###
 						if self.right_wf_flag:
 							output_pid_wf = self.pid_wf(self.right_wf_min_dist)
-							if self.right_wf_min_dist > (self.pid_wf.setpoint+0.01):
+							if self.right_wf_min_dist > (self.pid_wf.setpoint+0.02):
 								# print("go right")
 								self.wz = self.map_with_limit(output_pid_wf, -100.0, 0.0, -self.wz_wall_follow, 0.0)
-							elif self.right_wf_min_dist < (self.pid_wf.setpoint-0.01):
+							elif self.right_wf_min_dist < (self.pid_wf.setpoint-0.02):
 								# print("go left")
 								self.wz = self.map_with_limit(output_pid_wf, 0.0, 100.0, 0.0, self.wz_wall_follow)
 							else:
@@ -689,15 +696,24 @@ class GreenhouseNav:
 						### left wall-follow ###
 						else:
 							output_pid_wf = self.pid_wf(self.left_wf_min_dist)
-							if self.left_wf_min_dist > (self.pid_wf.setpoint+0.01):
+							if self.left_wf_min_dist > (self.pid_wf.setpoint+0.02):
 								self.wz = self.map_with_limit(output_pid_wf, -100.0, 0.0, self.wz_wall_follow, 0.0)
-							elif self.left_wf_min_dist < (self.pid_wf.setpoint-0.01):
+							elif self.left_wf_min_dist < (self.pid_wf.setpoint-0.02):
 								self.wz = self.map_with_limit(output_pid_wf, 0.0, 100.0, 0.0, -self.wz_wall_follow)
 							else:
 								self.wz = 0.0
 
 						self.vx = self.vx_wall_follow
-					
+						self.camera_trigger_pub(True)
+						self.camera_shutter = True
+
+						## If front_stop is detected during
+						if (self.front_stop_min_dist < self.front_stop_dist):
+							front_stop_detected_period = time.time() - last_front_stop_in_wf
+						else:
+							last_front_stop_in_wf = time.time()
+							front_stop_detected_period = 0.0
+
 					pid_mode = "W_F"
 					output_pid_log = output_pid_wf
 
@@ -720,7 +736,7 @@ class GreenhouseNav:
 					# 	self.pid_lc.auto_mode = False
 
 					if self.lc_step == 1:
-						if (self.right_lc_min_dist < self.lc_dist_step1) and (not self.lc_lock):
+						if (self.right_lc_min_dist < lc_dist_step1_list[self.shelf_number-1]) and (not self.lc_lock):
 							self.wz = 0.0
 						else:
 							self.lc_lock = True
@@ -733,7 +749,7 @@ class GreenhouseNav:
 								self.lc_lock = False
 
 					elif self.lc_step == 2:
-						if (self.right_lc_min_dist < self.lc_dist_step2) and (not self.lc_lock):
+						if (self.right_lc_min_dist < lc_dist_step2_list[self.shelf_number-1]) and (not self.lc_lock):
 							self.wz = 0.0
 						else:
 
@@ -759,9 +775,10 @@ class GreenhouseNav:
 					self.vx = self.vx_lane_change
 					# output_pid_log = output_pid_lc
 
-					print("nav_step: {:d} lc_step: {:d} mode: {:d} vx: {:.2f} wz: {:.2f} hdg: {:.2f} hdg_diff: {:.2f}   l_wf: {:.2f} r_wf: {:.2f} l_lct: {:.2f} r_lct: {:.2f} f_stop: {:.2f} r_lc: {:.2f}".format(\
+					print("nav_step: {:d} lc_step: {:d} mode: {:d} vx: {:.2f} wz: {:.2f} hdg: {:.2f} hdg_diff: {:.2f} lc_dist_step1: {:.1f} lc_dist_step2: {:.1f} r_lc: {:.2f} lc_lock: {}  s_NO: {:d} s_NO_nav: {:d}".format(\
 					self.nav_step, self.lc_step, self.cart_mode, self.vx, self.wz, self.hdg, hdg_diff,\
-					self.left_wf_min_dist, self.right_wf_min_dist, self.left_lct_min_dist, self.right_lct_min_dist, self.front_stop_min_dist, self.right_lc_min_dist))
+					lc_dist_step1_list[self.shelf_number-1], lc_dist_step2_list[self.shelf_number-1], self.right_lc_min_dist, self.lc_lock,\
+					self.shelf_number, self.shelf_number_nav))
 
 				###########################
 				## nav_step 3, U-turning ##
@@ -781,7 +798,7 @@ class GreenhouseNav:
 						self.pid_wf.auto_mode = True
 						self.pid_ut.auto_mode = False
 						self.nav_step2_done = False
-						
+						self.cmd_vel_publisher(0.0, 0.0)
 						print("Finished U-Turn")
 						time.sleep(2)
 
@@ -817,21 +834,27 @@ class GreenhouseNav:
 					print("wtf...")
 
 
-				cmd_vel_msg = Twist()
-				cmd_vel_msg.linear.x = self.vx
-				cmd_vel_msg.angular.z = self.wz
-				self.cmd_vel_pub.publish(cmd_vel_msg)
+				self.cmd_vel_publisher(self.vx, self.wz)
 
 				#############################
 				## Logging for PID control ##
 				#############################
 				if (self.nav_step == 1) or (self.nav_step == 3):
-					print("nav_step: {:d} mode: {:d} PID: {:} right_wf: {} sp: {:.2f} out_pid: {:.2f} vx: {:.2f} wz: {:.2f} hdg: {:.2f} hdg_diff: {:.2f}   l_wf: {:.2f} r_wf: {:.2f} l_lct: {:.2f} r_lct: {:.2f} f_stop: {:.2f} r_lc: {:.2f}    s_NO: {:d} s_NO_nav: {:d}".format(\
+					print("nav_step: {:d} mode: {:d} PID: {:} right_wf: {} sp: {:.2f} out_pid: {:.2f} vx: {:.2f} wz: {:.2f} hdg: {:.2f} hdg_diff: {:.2f}   l_wf: {:.2f} r_wf: {:.2f} l_lct: {:.2f} r_lct: {:.2f} f_stop: {:.2f} r_lc: {:.2f}    s_NO: {:d} s_NO_nav: {:d}  allowUT: {:.2f} ftopT: {:.2f}".format(\
 						self.nav_step, self.cart_mode, pid_mode, self.right_wf_flag, self.pid_wf.setpoint, output_pid_log, self.vx, self.wz, self.hdg, hdg_diff,\
 						self.left_wf_min_dist, self.right_wf_min_dist, self.left_lct_min_dist, self.right_lct_min_dist, self.front_stop_min_dist, self.right_lc_min_dist,\
-						self.shelf_number, self.shelf_number_nav))
+						self.shelf_number, self.shelf_number_nav, self.allow_uturn_period, front_stop_detected_period))
 
 				disable_nav_stamp = time.time()
+
+				########################################
+				## Publishing current shelf/shelf_nav ##
+				########################################
+				self.shelf_no_msg.data = self.shelf_number
+				self.shelf_no_nav_msg.data = self.shelf_number_nav
+
+				self.shelf_no_pub.publish(self.shelf_no_msg)
+				self.shelf_no_nav_pub.publish(self.shelf_no_nav_msg)
 			
 			## disable navigation ##
 			else:
@@ -843,6 +866,15 @@ class GreenhouseNav:
 				output_pid_log = 0.0
 				hdg_diff = 0.0
 				self.allow_uturn_stamp = time.time()
+
+			### UDP packets send ###
+			packets['cart_mode'] = self.cart_mode
+			packets['ch7'] = self.ch7
+			packets['shelf_no'] = self.shelf_number
+			packets['shelf_no_nav'] = self.shelf_number_nav
+			packets['shutter'] = self.camera_shutter
+			dump_packets = pickle.dumps(packets)
+			sock.sendto(dump_packets,(IP, PORT))
 
 			rate.sleep()
 
