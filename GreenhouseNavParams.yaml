@@ -1,5 +1,6 @@
 greenhouse_nav_params_server_node:
 
+  ## velocities
   vx_wall_follow: 0.04 #0.04
   wz_wall_follow: 1.0
 
@@ -7,6 +8,9 @@ greenhouse_nav_params_server_node:
   wz_lane_change: -1.2
 
   wz_skidding: 0.1
+
+  vx_uturn: 0.2
+  wz_uturn: 2.0
 
   ## front laserscan
   front_stop_dist: 1.4
@@ -44,14 +48,6 @@ greenhouse_nav_params_server_node:
   wf_p: 450.0 #150.0
   wf_i: 10.0
   wf_d: 0.0
-
-  # lc_p: 50.0
-  # lc_i: 0.0
-  # lc_d: 25.0
-
-  # rh_p: 3.0
-  # rh_i: 2.0
-  # rh_d: 0.0
 
   ut_p: 0.4
   ut_i: 0.02

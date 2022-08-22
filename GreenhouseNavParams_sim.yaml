@@ -1,19 +1,16 @@
 greenhouse_nav_params_server_node:
 
   ## velocities
-  vx_max: 1.0
-  wz_max: 1.0
-
-  vx_wall_follow: 0.25
+  vx_wall_follow: 0.2
   wz_wall_follow: 1.0
 
   vx_lane_change: 0.25
-  wz_lane_change: -0.16
+  wz_lane_change: -1.35 #-0.16
 
   wz_skidding: 0.15
 
   ## front laserscan
-  front_stop_dist: 1.4
+  front_stop_dist: 2.5
   front_min_scan_ang: -1.50
   front_max_scan_ang: 1.50
 
@@ -45,8 +42,8 @@ greenhouse_nav_params_server_node:
   lc_hdg_step2: 170.0
 
   ## PID 
-  wf_p: 150.0
-  wf_i: 0.0
+  wf_p: 350.0
+  wf_i: 10.0
   wf_d: 0.0
 
   # lc_p: 50.0

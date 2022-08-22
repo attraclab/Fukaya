@@ -66,5 +66,5 @@ lc_dist_step2_list = [1.2,
 					1.2]
 
 ## We can manually force the bot to start from specific shelf here
-shelf_number = 13        # 1 to 15
+shelf_number = 2        # 1 to 15
 shelf_number_nav = 1    # 1 or 2

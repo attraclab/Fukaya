@@ -58,6 +58,8 @@ class GreenhouseNav:
 		self.vx_lane_change = rosparam.get_param(sv_node+"/vx_lane_change")
 		self.wz_lane_change = rosparam.get_param(sv_node+"/wz_lane_change")
 		self.wz_skidding = rosparam.get_param(sv_node+"/wz_skidding")
+		self.vx_uturn = rosparam.get_param(sv_node+"/vx_uturn")
+		self.wz_uturn = rosparam.get_param(sv_node+"/wz_uturn")
 
 		self.front_stop_dist = rosparam.get_param(sv_node+"/front_stop_dist")
 		self.front_min_scan_ang = rosparam.get_param(sv_node+"/front_min_scan_ang")
@@ -104,6 +106,8 @@ class GreenhouseNav:
 		rospy.loginfo("vx_lane_change : {:}".format(self.vx_lane_change))
 		rospy.loginfo("wz_lane_change : {:}".format(self.wz_lane_change))
 		rospy.loginfo("wz_skidding : {:}".format(self.wz_skidding))
+		rospy.loginfo("vx_uturn : {:}".format(self.vx_uturn))
+		rospy.loginfo("wz_uturn : {:}".format(self.wz_uturn))
 
 		rospy.loginfo("front_stop_dist : {:}".format(self.front_stop_dist))
 		rospy.loginfo("front_min_scan_ang : {:}".format(self.front_min_scan_ang))
@@ -131,10 +135,6 @@ class GreenhouseNav:
 		rospy.loginfo("wf_p : {:}".format(self.wf_p))
 		rospy.loginfo("wf_i : {:}".format(self.wf_i))
 		rospy.loginfo("wf_d : {:}".format(self.wf_d))
-
-		# rospy.loginfo("lc_p : {:}".format(self.lc_p))
-		# rospy.loginfo("lc_i : {:}".format(self.lc_i))
-		# rospy.loginfo("lc_d : {:}".format(self.lc_d))
 		
 		rospy.loginfo("ut_p : {:}".format(self.ut_p))
 		rospy.loginfo("ut_i : {:}".format(self.ut_i))
@@ -279,6 +279,8 @@ class GreenhouseNav:
 		self.vx_lane_change = config["vx_lane_change"]
 		self.wz_lane_change = config["wz_lane_change"]
 		self.wz_skidding = config["wz_skidding"]
+		self.vx_uturn = config["vx_uturn"]
+		self.wz_uturn = config["wz_uturn"]
 
 		self.front_stop_dist = config["front_stop_dist"]
 		self.front_min_scan_ang = config["front_min_scan_ang"]
@@ -642,8 +644,8 @@ class GreenhouseNav:
 					##################################
 					## lane-change trigger checking ##
 					##################################
-					lane_change_dist_criteria = (self.left_lct_min_dist >= self.left_lct_dist) or (self.right_lct_min_dist >= self.right_lct_dist)
-					#if ((self.right_lct_min_dist >= self.right_lct_dist)) and (not self.nav_step2_done) and (self.allow_uturn_period > 10.0) and (self.shelf_number_nav == 1):
+					# lane_change_dist_criteria = (self.left_lct_min_dist >= self.left_lct_dist) or (self.right_lct_min_dist >= self.right_lct_dist)
+					lane_change_dist_criteria = (self.right_lct_min_dist >= self.right_lct_dist)
 					if (lane_change_dist_criteria) and (not self.nav_step2_done) and (self.allow_uturn_period > 10.0) and (self.shelf_number_nav == 1):
 						self.vx = 0.0
 						self.wz = 0.0
@@ -788,24 +790,44 @@ class GreenhouseNav:
 					hdg_diff, diff_sign = self.find_smallest_diff_ang(last_wf_hdg, self.hdg)
 					hdg_diff = self.ConvertTo180Range(hdg_diff*(-diff_sign))
 
-					output_pid_ut = self.pid_ut(abs(hdg_diff))
+					# output_pid_ut = self.pid_ut(abs(hdg_diff))
+					# if abs(hdg_diff) < 175.0:
+					# 	self.wz = self.map_with_limit(output_pid_ut, -100.0, 100.0, -self.wz_skidding, self.wz_skidding)
+					# else:
+					# 	self.wz = 0.0
+					# 	self.nav_step = 4
+					# 	self.pid_wf.auto_mode = True
+					# 	self.pid_ut.auto_mode = False
+					# 	self.nav_step2_done = False
+					# 	self.cmd_vel_publisher(0.0, 0.0)
+					# 	print("Finished U-Turn")
+					# 	time.sleep(2)
 
-					if abs(hdg_diff) < 175.0:
-						self.wz = self.map_with_limit(output_pid_ut, -100.0, 100.0, -self.wz_skidding, self.wz_skidding)
+					# self.vx = 0.0
+					# output_pid_log = output_pid_ut
+					# pid_mode = "U_T"
+
+
+					if abs(hdg_diff) < 90.0:
+						self.vx = -self.vx_uturn
+						self.wz = self.wz_uturn
+					elif abs(hdg_diff) < 170.0:
+						self.vx = self.vx_uturn
+						self.wz = self.wz_uturn
 					else:
+						self.vx = 0.0
 						self.wz = 0.0
 						self.nav_step = 4
 						self.pid_wf.auto_mode = True
-						self.pid_ut.auto_mode = False
 						self.nav_step2_done = False
 						self.cmd_vel_publisher(0.0, 0.0)
 						print("Finished U-Turn")
 						time.sleep(2)
 
+					print("nav_step: {:d} hdg: {:.2f} hdg_diff: {:.2f} vx: {:.2f} wz: {:.2f}".format(\
+						self.nav_step, self.hdg, hdg_diff, self.vx, self.wz))
 
-					self.vx = 0.0
-					output_pid_log = output_pid_ut
-					pid_mode = "U_T"
+
 
 				#######################################
 				## nav_step 4, Checking shelf number ##
@@ -839,7 +861,7 @@ class GreenhouseNav:
 				#############################
 				## Logging for PID control ##
 				#############################
-				if (self.nav_step == 1) or (self.nav_step == 3):
+				if (self.nav_step == 1):
 					print("nav_step: {:d} mode: {:d} PID: {:} right_wf: {} sp: {:.2f} out_pid: {:.2f} vx: {:.2f} wz: {:.2f} hdg: {:.2f} hdg_diff: {:.2f}   l_wf: {:.2f} r_wf: {:.2f} l_lct: {:.2f} r_lct: {:.2f} f_stop: {:.2f} r_lc: {:.2f}    s_NO: {:d} s_NO_nav: {:d}  allowUT: {:.2f} ftopT: {:.2f}".format(\
 						self.nav_step, self.cart_mode, pid_mode, self.right_wf_flag, self.pid_wf.setpoint, output_pid_log, self.vx, self.wz, self.hdg, hdg_diff,\
 						self.left_wf_min_dist, self.right_wf_min_dist, self.left_lct_min_dist, self.right_lct_min_dist, self.front_stop_min_dist, self.right_lc_min_dist,\
