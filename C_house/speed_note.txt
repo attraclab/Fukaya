@@ -1,0 +1,20 @@
+
+vx = 0.1 m/s
+
+it took 3 minutes 18 seconds to complete 1 1/2 lane  => 198 seconds
+
+delay on 1st to 5th lane need 51 frames 
+			=> 198 sec / 51 frames = 3.88 sec delay to capture 1 frame
+			=> 195 sec / 51 frames = 3.78 sec delay to capture 1 frame
+
+delay on 6th lane need 48 frames => 198 sec / 48 frames = 4.12 sec delay to capture 1 frame
+
+delay on 7th lane same as 1st-5th lanes
+
+
+1th to 7th lanes, the bot using 198 seconds because shorter
+8th to 30th lanes, the bot using around 3 mins 32sec (212 secs) ~ 3 mins 39sec (219 seconds)
+
+8th to 30th lanes need 57 frames  
+			=> 212 sec / 57 frames = 3.72 sec delay to capture 1 frame
+			=> 219 sec / 57 frames = 3.84 sec delay to capture 1 frame

@@ -1,0 +1,54 @@
+greenhouse_nav_params_server_node:
+
+  ## velocities
+  vx_wall_follow: 0.10 #0.1 #0.04
+  wz_wall_follow: 1.0
+
+  vx_lane_change: 0.1
+  wz_lane_change: -1.2
+
+  wz_skidding: 0.1
+
+  vx_uturn: 0.2
+  wz_uturn: 2.0
+
+  ## front laserscan
+  front_stop_dist: 1.6 #1.4
+  front_min_scan_ang: -1.0
+  front_max_scan_ang: 1.0
+
+  ## left laserscan
+  ### wall-follow
+  left_wf_min_scan_ang: 70.0
+  left_wf_max_scan_ang: 80.0
+  ### lane-change trig
+  left_lct_min_scan_ang: 60.0
+  left_lct_max_scan_ang: 70.0
+  left_lct_dist: 2.5 #1.5
+
+  ## right laserscan
+  right_wf_min_scan_ang: -80.0
+  right_wf_max_scan_ang: -70.0
+  ### lane-change trig
+  right_lct_min_scan_ang: -70.0
+  right_lct_max_scan_ang: -60.0
+  right_lct_dist: 2.5 #1.5
+  ### lane-change
+  right_lc_min_scan_ang: -100.0
+  right_lc_max_scan_ang: -80.0
+
+  ## lane-change criteria
+  lc_dist_step1: 0.8
+  lc_hdg_step1: 90.0
+
+  lc_dist_step2: 1.2
+  lc_hdg_step2: 160.0 #170.0
+
+  ## PID 
+  wf_p: 450.0 #150.0
+  wf_i: 0.0 #10.0
+  wf_d: 0.0
+
+  ut_p: 0.4
+  ut_i: 0.02
+  ut_d: 0.0

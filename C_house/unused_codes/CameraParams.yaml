@@ -1,0 +1,8 @@
+camera_dyn_sv_params:
+
+  focus: 25
+  contrast: 30
+  exposure: 312
+  saturation: 50
+  brightness: 1
+  wb: 5000

@@ -1,0 +1,2 @@
+nvgstcapture-1.0 --mode=1 --image-res=8 --automate --capture-auto --start-time=2 --whitebalance=5000
+

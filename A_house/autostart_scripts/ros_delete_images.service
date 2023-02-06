@@ -1,0 +1,12 @@
+[Unit]
+Description=All of ROS running on the background
+After=multi-user.target
+
+[Service]
+Type=idle
+User=nvidia
+ExecStart=/bin/bash /home/nvidia/Fukaya/A_house/autostart_scripts/start_delete_images.sh
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

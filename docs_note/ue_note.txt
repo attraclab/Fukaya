@@ -1,0 +1,7 @@
+Edge server 192.168.1.8
+
+UE7 : Jetson => 10.1.7.100
+      Laptop => 10.1.7.101
+
+A_house:      
+UE6 -> GF04  -> 10.1.6.100 
