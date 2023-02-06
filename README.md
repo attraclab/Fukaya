@@ -44,6 +44,7 @@ which robot will perform depends on the laserscan data and the `shelf_no` and `s
 Robot will start from red dot where it is `shelf_no = 1` and `shelf_no_nav = 2`. `shelf_no` means the strawberry shelf where the robot's camera is pointing to during navigation. So our camera is on right side of the robot and it's pointing to shelf number 1, `shelf_no_nav` means the direction of navigation which can be
 
 1 : going from lane end back to starting point
+
 2 : goint from starting point to lane end.
 
 So as starting point location, the strawberry shelf which robot going to take a photo is called 1_2, it comes from `shelf_no` _ `shelf_no_nav` numbers.
@@ -83,7 +84,7 @@ After performing wall-following once more to come back to open end again, it is 
 
 Then the lane-changing is using a smallest distance between `right_lc_min_scan_ang` and `right_lc_max_scan_ang`, the sequence of motion will be explained with image below,
 
-![](images/lane_change.jpg)
+![](images/lane_change_crop.jpg)
 
 it goes straight from point `a` until the the smallest value of `right_lc_dist` is more than `lc_dist_step1` parameters, then it will turn 90 degrees at point `b`, and continue going straigh to `c`. During going straight if `right_lc_dist` is more than `lc_dist_step2` then it will turn 90 degrees again at point `d`, and finally stop at point `e`. The parameters of `lc_dist_step1` and `lc_dist_step2` depend on the lane in each house, so from experiment we make a custom array of this parameter in `custom_params.py`
 
