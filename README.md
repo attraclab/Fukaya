@@ -29,7 +29,7 @@ There are two main nodes from this project which is
 
 2. `gopro_capture_udp.py`, this node is taking care of GoPro HERO 10 interface. The shutter will be pressed programmatically according to UDP data packet from `greenhouse_navigation2` , the captured image will be sent by to Ginzafarm Edge Serer over WiFi by `rsync` command.
 
-## Autnomouse Driving Algorithms
+## Autnomous Driving Algorithms
 
 There are three behaviors as following,  
 
